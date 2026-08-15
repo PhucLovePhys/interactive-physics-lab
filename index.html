@@ -149,6 +149,8 @@
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
             scene.add(new THREE.AmbientLight(0x334155, 1.2));
@@ -163,54 +165,41 @@
             sun.userData = { name: 'Sun', vnName: 'Mặt Trời', desc: 'Ngôi sao trung tâm cung cấp năng lượng và hấp dẫn toàn hệ thống.', distAU: '0 AU', speedVal: '0 km/s' };
             scene.add(sun);
 
-            planetData.forEach(data => {
-                const orbitGeo = new THREE.RingGeometry(data.distance - 0.05, data.distance + 0.05, 64);
-                const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-                const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
-                orbitLine.rotation.x = Math.PI / 2;
-                scene.add(orbitLine);
+            // Thay toàn bộ khối planetData.forEach(...) cũ bằng khối này:
+const textureLoader = new THREE.TextureLoader();
 
-                const planetGeo = new THREE.SphereGeometry(data.radius, 24, 24);
-                const planetMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
-                const planet = new THREE.Mesh(planetGeo, planetMat);
+planetData.forEach(data => {
+    // 1. Tạo quỹ đạo
+    const orbitGeo = new THREE.RingGeometry(data.distance - 0.05, data.distance + 0.05, 64);
+    const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+    const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
+    orbitLine.rotation.x = Math.PI / 2;
+    scene.add(orbitLine);
 
-                planet.userData = { 
-                    name: data.name, vnName: data.vnName, distance: data.distance, speed: data.speed, 
-                    angle: Math.random() * Math.PI * 2, desc: data.desc, distAU: data.distAU, speedVal: data.speedVal
-                };
+    // 2. Tạo Hành tinh với vật liệu thực tế
+    // Tạm thời dùng màu nếu không có ảnh, hoặc dùng TextureLoader nếu cậu có link ảnh
+    const planetMat = new THREE.MeshStandardMaterial({
+        color: data.color,
+        roughness: 0.7,
+        metalness: 0.1
+    });
+    
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(data.radius, 32, 32), planetMat);
+    planet.castShadow = true; // Cho phép đổ bóng
+    
+    planet.userData = { 
+        name: data.name, vnName: data.vnName, distance: data.distance, speed: data.speed, 
+        angle: Math.random() * Math.PI * 2, desc: data.desc, distAU: data.distAU, speedVal: data.speedVal
+    };
 
-                if (data.name === 'Saturn') {
-                    const ringGeo = new THREE.RingGeometry(3.5, 5.5, 32);
-                    const ringMat = new THREE.MeshBasicMaterial({ color: 0xca8a04, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-                    const ring = new THREE.Mesh(ringGeo, ringMat);
-                    ring.rotation.x = Math.PI / 2;
-                    planet.add(ring);
-                }
-                scene.add(planet);
-                planets.push(planet);
-            });
+    // 3. Hiệu ứng khí quyển cho hành tinh (trông giống Trái Đất hơn)
+    const atmosMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.BackSide });
+    const atmos = new THREE.Mesh(new THREE.SphereGeometry(data.radius * 1.2, 32, 32), atmosMat);
+    planet.add(atmos);
 
-            container.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
-            window.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                cameraAngleY -= (e.clientX - previousMousePosition.x) * 0.005;
-                cameraAngleX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, cameraAngleX - (e.clientY - previousMousePosition.y) * 0.005));
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-            window.addEventListener('mouseup', () => { isDragging = false; });
-            container.addEventListener('wheel', (e) => { cameraDistance = Math.max(20, Math.min(250, cameraDistance + e.deltaY * 0.08)); });
-
-            container.addEventListener('click', (e) => {
-                const rect = container.getBoundingClientRect();
-                const mouse = new THREE.Vector2(((e.clientX - rect.left) / container.clientWidth) * 2 - 1, -((e.clientY - rect.top) / container.clientHeight) * 2 + 1);
-                const raycaster = new THREE.Raycaster();
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects([sun, ...planets]);
-                if (intersects.length > 0) focusPlanet(intersects[0].object.userData.name);
-            });
-
-            window.addEventListener('resize', onWindowResize);
-            animate();
+    scene.add(planet);
+    planets.push(planet);
+});
         }
 
         function spawnComet() {
@@ -277,6 +266,7 @@
             const timeScale = parseFloat(document.getElementById('timescale').value);
             document.getElementById('val-sunmass').innerText = sunMass.toFixed(1) + " x";
             document.getElementById('val-timescale').innerText = timeScale.toFixed(1) + "x";
+            planet.rotation.y += 0.005
 
             sun.rotation.y += 0.002 * timeScale;
             planets.forEach(p => {
