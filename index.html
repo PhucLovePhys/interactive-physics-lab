@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng 3D Hệ Mặt Trời tương tác & Hộp cát Hấp dẫn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #030712; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
+
+    <!-- Header điều hướng -->
+    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 px-6 py-3.5 flex items-center justify-between shrink-0 z-20 shadow-xl">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="font-bold text-base text-white tracking-wide">SolarSandbox <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 ml-2">3D Orbital Physics</span></h1>
+                <p class="text-xs text-slate-400">Khám phá cơ học thiên thể và bẻ cong định luật vạn vật hấp dẫn</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button onclick="spawnComet()" class="px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-medium border border-indigo-500/40 transition flex items-center space-x-2">
+                <span>☄️ Bắn Sao Chổi / Tiểu Hành Tinh</span>
+            </button>
+            <button onclick="resetSimulation()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Khôi phục quỹ đạo</span>
+            </button>
+            <div id="status-badge" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Hệ ổn định</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden relative">
+        <!-- 3D Canvas Viewport -->
+        <div id="canvas-container" class="flex-1 h-full relative cursor-grab active:cursor-grabbing"></div>
+
+        <!-- Bảng điều khiển bên phải -->
+        <aside class="w-80 bg-slate-900/90 backdrop-blur border-l border-slate-800 flex flex-col shrink-0 z-10 p-5 space-y-5 overflow-y-auto shadow-2xl">
+            <div>
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Thông số Hộp cát Hấp dẫn</h2>
+                <div class="space-y-4">
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Khối lượng Mặt Trời ($M_\odot$):</span>
+                            <span id="val-sunmass" class="text-amber-400 font-bold font-mono">1.0 x</span>
+                        </div>
+                        <input type="range" id="sunmass" min="0.1" max="5.0" step="0.1" value="1.0" 
+                            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Tốc độ Thời gian (Time Scale):</span>
+                            <span id="val-timescale" class="text-cyan-400 font-bold font-mono">1.0x</span>
+                        </div>
+                        <input type="range" id="timescale" min="0.0" max="5.0" step="0.1" value="1.0" 
+                            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Thông tin chi tiết hành tinh được chọn -->
+            <div id="planet-info" class="space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span id="info-name">Hệ Mặt Trời (Tổng quan)</span>
+                </h3>
+                <p id="info-desc" class="text-xs text-slate-300 leading-relaxed">
+                    Click vào bất kỳ hành tinh nào trong không gian hoặc chọn nhanh bên dưới để xem dữ liệu quỹ đạo và gia tốc trọng trường.
+                </p>
+                <div id="info-stats" class="grid grid-cols-2 gap-2 pt-2 text-xs">
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-slate-400 text-[10px]">Khoảng cách trung bình</div>
+                        <div id="stat-dist" class="font-mono text-cyan-400 font-bold">1 AU</div>
+                    </div>
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-slate-400 text-[10px]">Vận tốc quỹ đạo</div>
+                        <div id="stat-speed" class="font-mono text-cyan-400 font-bold">30 km/s</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách hành tinh chọn nhanh -->
+            <div class="space-y-2">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Chọn góc nhìn hành tinh</h3>
+                <div id="planet-buttons" class="grid grid-cols-2 gap-2">
+                    <button onclick="focusPlanet('Sun')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-amber-400 transition border border-slate-700 text-left">☀️ Mặt Trời</button>
+                    <button onclick="focusPlanet('Mercury')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">☿ Thủy Tinh</button>
+                    <button onclick="focusPlanet('Venus')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">♀ Kim Tinh</button>
+                    <button onclick="focusPlanet('Earth')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">🌍 Trái Đất</button>
+                    <button onclick="focusPlanet('Mars')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">♂ Hỏa Tinh</button>
+                    <button onclick="focusPlanet('Jupiter')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">♃ Mộc Tinh</button>
+                    <button onclick="focusPlanet('Saturn')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">♄ Thổ Tinh</button>
+                    <button onclick="focusPlanet('Uranus')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">⛢ Thiên Vương</button>
+                    <button onclick="focusPlanet('Neptune')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700 text-left">♆ Hải Vương</button>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="focusPlanet('Overview')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-95 text-white font-semibold text-xs transition shadow-lg shadow-orange-500/20">
+                    🌌 Góc nhìn toàn cảnh Hệ Mặt Trời
+                </button>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        let scene, camera, renderer;
+        let sun, planets = [], comets = [];
+        let focusedObject = null;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngleX = 0.5, cameraAngleY = 0, cameraDistance = 120;
+
+        const planetData = [
+            { name: 'Mercury', vnName: 'Thủy Tinh', distance: 12, radius: 0.8, speed: 0.04, color: 0x94a3b8, desc: 'Hành tinh nhỏ nhất và gần Mặt Trời nhất. Chịu biên độ nhiệt cực đoan.', distAU: '0.39 AU', speedVal: '47.4 km/s' },
+            { name: 'Venus', vnName: 'Kim Tinh', distance: 18, radius: 1.4, speed: 0.03, color: 0xfbbf24, desc: 'Hành tinh nóng nhất hệ mặt trời do hiệu ứng nhà kính cực mạnh của CO2.', distAU: '0.72 AU', speedVal: '35.0 km/s' },
+            { name: 'Earth', vnName: 'Trái Đất', distance: 26, radius: 1.6, speed: 0.025, color: 0x38bdf8, desc: 'Ngôi nhà của sự sống, hành tinh duy nhất tồn tại nước dạng lỏng bề mặt.', distAU: '1.00 AU', speedVal: '29.8 km/s' },
+            { name: 'Mars', vnName: 'Hỏa Tinh', distance: 35, radius: 1.2, speed: 0.02, color: 0xf87171, desc: 'Hành tinh đỏ, mục tiêu khám phá định cư hàng đầu của nhân loại trong thế kỷ tới.', distAU: '1.52 AU', speedVal: '24.1 km/s' },
+            { name: 'Jupiter', vnName: 'Mộc Tinh', distance: 48, radius: 3.5, speed: 0.012, color: 0xfb923c, desc: 'Khổng lồ khí lớn nhất hệ mặt trời với Vết Đỏ Lớn huyền thoại.', distAU: '5.20 AU', speedVal: '13.1 km/s' },
+            { name: 'Saturn', vnName: 'Thổ Tinh', distance: 62, radius: 2.8, speed: 0.009, color: 0xfde047, desc: 'Có hệ thống vành đai băng đá tráng lệ bao quanh.', distAU: '9.58 AU', speedVal: '9.7 km/s' },
+            { name: 'Uranus', vnName: 'Thiên Vương Tinh', distance: 75, radius: 2.2, speed: 0.006, color: 0x2dd4bf, desc: 'Hành tinh khí lạnh giá quay quanh quỹ đạo với góc nghiêng đặc biệt.', distAU: '19.2 AU', speedVal: '6.8 km/s' },
+            { name: 'Neptune', vnName: 'Hải Vương Tinh', distance: 88, radius: 2.1, speed: 0.004, color: 0x6366f1, desc: 'Hành tinh xa nhất với những cơn bão cuồng phong mạnh nhất Hệ Mặt Trời.', distAU: '30.1 AU', speedVal: '5.4 km/s' }
+        ];
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x030712, 0.002);
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
+            updateCameraPosition();
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x334155, 1.2);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.PointLight(0xffedd5, 2.5, 500);
+            scene.add(sunLight);
+
+            // Background Starfield
+            createStarfield();
+
+            // Create Sun
+            const sunGeo = new THREE.SphereGeometry(6, 32, 32);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+            sun = new THREE.Mesh(sunGeo, sunMat);
+            sun.userData = { name: 'Sun', vnName: 'Mặt Trời', desc: 'Ngôi sao trung tâm cung cấp năng lượng và hấp dẫn toàn hệ thống.', distAU: '0 AU', speedVal: '0 km/s' };
+            scene.add(sun);
+
+            // Create Sun Glow Effect
+            const glowGeo = new THREE.SphereGeometry(7.2, 32, 32);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.35 });
+            const sunGlow = new THREE.Mesh(glowGeo, glowMat);
+            sun.add(sunGlow);
+
+            // Create Planets & Orbits
+            planetData.forEach(data => {
+                // Orbit Line
+                const orbitGeo = new THREE.RingGeometry(data.distance - 0.05, data.distance + 0.05, 64);
+                const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+                const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
+                orbitLine.rotation.x = Math.PI / 2;
+                scene.add(orbitLine);
+
+                // Planet Mesh
+                const planetGeo = new THREE.SphereGeometry(data.radius, 24, 24);
+                const planetMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
+                const planet = new THREE.Mesh(planetGeo, planetMat);
+
+                planet.userData = { 
+                    name: data.name, 
+                    vnName: data.vnName, 
+                    distance: data.distance, 
+                    speed: data.speed, 
+                    angle: Math.random() * Math.PI * 2,
+                    desc: data.desc,
+                    distAU: data.distAU,
+                    speedVal: data.speedVal
+                };
+
+                // Add Saturn Rings if Saturn
+                if (data.name === 'Saturn') {
+                    const ringGeo = new THREE.RingGeometry(3.5, 5.5, 32);
+                    const ringMat = new THREE.MeshBasicMaterial({ color: 0xca8a04, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    planet.add(ring);
+                }
+
+                scene.add(planet);
+                planets.push(planet);
+            });
+
+            // Mouse & Touch Interaction for Camera Orbit
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                cameraAngleY -= deltaX * 0.005;
+                cameraAngleX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, cameraAngleX - deltaY * 0.005));
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+                updateCameraPosition();
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Zoom with Wheel
+            container.addEventListener('wheel', (e) => {
+                cameraDistance = Math.max(20, Math.min(250, cameraDistance + e.deltaY * 0.08));
+                updateCameraPosition();
+            });
+
+            // Click detection on planets
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            container.addEventListener('click', (e) => {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects([sun, ...planets]);
+
+                if (intersects.length > 0) {
+                    const clickedObj = intersects[0].object;
+                    if (clickedObj.userData && clickedObj.userData.name) {
+                        focusPlanet(clickedObj.userData.name);
+                    }
+                }
+            });
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function spawnComet() {
+            const cometGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            const cometMat = new THREE.MeshBasicMaterial({ color: 0xa5f3fc });
+            const comet = new THREE.Mesh(cometGeo, cometMat);
+
+            const startAngle = Math.random() * Math.PI * 2;
+            const startDist = 110;
+            comet.position.set(Math.cos(startAngle) * startDist, (Math.random() - 0.5) * 20, Math.sin(startAngle) * startDist);
+
+            comet.userData = {
+                vx: -Math.sin(startAngle) * 0.8,
+                vz: Math.cos(startAngle) * 0.8,
+                vy: (Math.random() - 0.5) * 0.1
+            };
+
+            scene.add(comet);
+            comets.push(comet);
+        }
+
+        function createStarfield() {
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 2500;
+            const starPositions = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount * 3; i += 3) {
+                starPositions[i] = (Math.random() - 0.5) * 800;
+                starPositions[i + 1] = (Math.random() - 0.5) * 800;
+                starPositions[i + 2] = (Math.random() - 0.5) * 800;
+            }
+
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.8 });
+            const stars = new THREE.Points(starGeo, starMat);
+            scene.add(stars);
+        }
+
+        function updateCameraPosition() {
+            if (focusedObject && focusedObject !== 'Overview') {
+                let targetObj = focusedObject === 'Sun' ? sun : planets.find(p => p.userData.name === focusedObject);
+                if (targetObj) {
+                    camera.position.x = targetObj.position.x + Math.sin(cameraAngleY) * 25;
+                    camera.position.y = targetObj.position.y + 12;
+                    camera.position.z = targetObj.position.z + Math.cos(cameraAngleY) * 25;
+                    camera.lookAt(targetObj.position);
+                    return;
+                }
+            }
+
+            // Overview mode
+            camera.position.x = Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
+            camera.position.y = Math.sin(cameraAngleX) * cameraDistance;
+            camera.position.z = Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
+            camera.lookAt(0, 0, 0);
+        }
+
+        function focusPlanet(name) {
+            focusedObject = name;
+            let targetData = name === 'Sun' ? sun.userData : planets.find(p => p.userData.name === name)?.userData;
+            if (!targetData) return;
+
+            document.getElementById('info-name').innerText = targetData.vnName || targetData.name;
+            document.getElementById('info-desc').innerText = targetData.desc;
+            document.getElementById('stat-dist').innerText = targetData.distAU;
+            document.getElementById('stat-speed').innerText = targetData.speedVal;
+        }
+
+        function resetSimulation() {
+            document.getElementById('sunmass').value = 1.0;
+            document.getElementById('timescale').value = 1.0;
+            focusedObject = 'Overview';
+            cameraDistance = 120;
+            cameraAngleX = 0.5;
+            cameraAngleY = 0;
+            focusPlanet('Overview');
+            
+            // Remove all custom comets
+            comets.forEach(c => scene.remove(c));
+            comets = [];
+
+            document.getElementById('info-name').innerText = "Hệ Mặt Trời (Tổng quan)";
+            document.getElementById('info-desc').innerText = "Click vào bất kỳ hành tinh nào trong không gian hoặc chọn nhanh bên dưới để xem dữ liệu quỹ đạo.";
+            document.getElementById('stat-dist').innerText = "1 AU";
+            document.getElementById('stat-speed').innerText = "30 km/s";
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const sunMass = parseFloat(document.getElementById('sunmass').value);
+            const timeScale = parseFloat(document.getElementById('timescale').value);
+
+            document.getElementById('val-sunmass').innerText = sunMass.toFixed(1) + " x";
+            document.getElementById('val-timescale').innerText = timeScale.toFixed(1) + "x";
+
+            // Rotate Sun
+            sun.rotation.y += 0.002 * timeScale;
+
+            // Update Planets Orbit with gravitational multiplier
+            planets.forEach(planet => {
+                const data = planet.userData;
+                const effectiveSpeed = data.speed * Math.sqrt(sunMass) * timeScale;
+                data.angle += effectiveSpeed;
+
+                planet.position.x = Math.cos(data.angle) * data.distance;
+                planet.position.z = Math.sin(data.angle) * data.distance;
+                planet.rotation.y += 0.01 * timeScale;
+            });
+
+            // Update Comets / Free-flying Asteroids with 1/r^2 gravity pull towards Sun
+            comets.forEach(comet => {
+                const x = comet.position.x;
+                const z = comet.position.z;
+                const distSq = x * x + z * z + 1;
+                const dist = Math.sqrt(distSq);
+
+                // Gravitational acceleration towards center (0,0,0)
+                const force = (0.5 * sunMass) / distSq;
+                comet.userData.vx -= (x / dist) * force * timeScale;
+                comet.userData.vz -= (z / dist) * force * timeScale;
+
+                comet.position.x += comet.userData.vx * timeScale;
+                comet.position.z += comet.userData.vz * timeScale;
+                comet.position.y += comet.userData.vy * timeScale;
+            });
+
+            updateCameraPosition();
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
