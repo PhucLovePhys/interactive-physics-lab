@@ -18,7 +18,6 @@
 </head>
 <body class="h-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
 
-    <!-- Header điều hướng -->
     <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 px-6 py-3.5 flex items-center justify-between shrink-0 z-20 shadow-xl">
         <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
@@ -47,12 +46,9 @@
         </div>
     </header>
 
-    <!-- Main Workspace -->
     <main class="flex-1 flex overflow-hidden relative">
-        <!-- 3D Canvas Viewport -->
         <div id="canvas-container" class="flex-1 h-full relative cursor-grab active:cursor-grabbing"></div>
 
-        <!-- Bảng điều khiển bên phải -->
         <aside class="w-80 bg-slate-900/90 backdrop-blur border-l border-slate-800 flex flex-col shrink-0 z-10 p-5 space-y-5 overflow-y-auto shadow-2xl">
             <div>
                 <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Thông số Hộp cát Hấp dẫn</h2>
@@ -79,7 +75,6 @@
 
             <hr class="border-slate-800">
 
-            <!-- Thông tin chi tiết hành tinh được chọn -->
             <div id="planet-info" class="space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
                 <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -100,7 +95,6 @@
                 </div>
             </div>
 
-            <!-- Danh sách hành tinh chọn nhanh -->
             <div class="space-y-2">
                 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Chọn góc nhìn hành tinh</h3>
                 <div id="planet-buttons" class="grid grid-cols-2 gap-2">
@@ -127,7 +121,7 @@
     <script>
         let scene, camera, renderer;
         let sun, planets = [], comets = [];
-        let focusedObject = null;
+        let focusedObject = 'Overview';
         let isDragging = false;
         let previousMousePosition = { x: 0, y: 0 };
         let cameraAngleX = 0.5, cameraAngleY = 0, cameraDistance = 120;
@@ -146,69 +140,45 @@
         function init() {
             const container = document.getElementById('canvas-container');
             
-            // Scene Setup
             scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x030712, 0.002);
 
-            // Camera Setup
             camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 2000);
             updateCameraPosition();
 
-            // Renderer Setup
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x334155, 1.2);
-            scene.add(ambientLight);
-
+            scene.add(new THREE.AmbientLight(0x334155, 1.2));
             const sunLight = new THREE.PointLight(0xffedd5, 2.5, 500);
             scene.add(sunLight);
 
-            // Background Starfield
             createStarfield();
 
-            // Create Sun
             const sunGeo = new THREE.SphereGeometry(6, 32, 32);
             const sunMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
             sun = new THREE.Mesh(sunGeo, sunMat);
             sun.userData = { name: 'Sun', vnName: 'Mặt Trời', desc: 'Ngôi sao trung tâm cung cấp năng lượng và hấp dẫn toàn hệ thống.', distAU: '0 AU', speedVal: '0 km/s' };
             scene.add(sun);
 
-            // Create Sun Glow Effect
-            const glowGeo = new THREE.SphereGeometry(7.2, 32, 32);
-            const glowMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.35 });
-            const sunGlow = new THREE.Mesh(glowGeo, glowMat);
-            sun.add(sunGlow);
-
-            // Create Planets & Orbits
             planetData.forEach(data => {
-                // Orbit Line
                 const orbitGeo = new THREE.RingGeometry(data.distance - 0.05, data.distance + 0.05, 64);
                 const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
                 const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
                 orbitLine.rotation.x = Math.PI / 2;
                 scene.add(orbitLine);
 
-                // Planet Mesh
                 const planetGeo = new THREE.SphereGeometry(data.radius, 24, 24);
                 const planetMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
                 const planet = new THREE.Mesh(planetGeo, planetMat);
 
                 planet.userData = { 
-                    name: data.name, 
-                    vnName: data.vnName, 
-                    distance: data.distance, 
-                    speed: data.speed, 
-                    angle: Math.random() * Math.PI * 2,
-                    desc: data.desc,
-                    distAU: data.distAU,
-                    speedVal: data.speedVal
+                    name: data.name, vnName: data.vnName, distance: data.distance, speed: data.speed, 
+                    angle: Math.random() * Math.PI * 2, desc: data.desc, distAU: data.distAU, speedVal: data.speedVal
                 };
 
-                // Add Saturn Rings if Saturn
                 if (data.name === 'Saturn') {
                     const ringGeo = new THREE.RingGeometry(3.5, 5.5, 32);
                     const ringMat = new THREE.MeshBasicMaterial({ color: 0xca8a04, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
@@ -216,54 +186,27 @@
                     ring.rotation.x = Math.PI / 2;
                     planet.add(ring);
                 }
-
                 scene.add(planet);
                 planets.push(planet);
             });
 
-            // Mouse & Touch Interaction for Camera Orbit
-            container.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
+            container.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
             window.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
-                const deltaX = e.clientX - previousMousePosition.x;
-                const deltaY = e.clientY - previousMousePosition.y;
-
-                cameraAngleY -= deltaX * 0.005;
-                cameraAngleX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, cameraAngleX - deltaY * 0.005));
-
+                cameraAngleY -= (e.clientX - previousMousePosition.x) * 0.005;
+                cameraAngleX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, cameraAngleX - (e.clientY - previousMousePosition.y) * 0.005));
                 previousMousePosition = { x: e.clientX, y: e.clientY };
-                updateCameraPosition();
             });
-
             window.addEventListener('mouseup', () => { isDragging = false; });
+            container.addEventListener('wheel', (e) => { cameraDistance = Math.max(20, Math.min(250, cameraDistance + e.deltaY * 0.08)); });
 
-            // Zoom with Wheel
-            container.addEventListener('wheel', (e) => {
-                cameraDistance = Math.max(20, Math.min(250, cameraDistance + e.deltaY * 0.08));
-                updateCameraPosition();
-            });
-
-            // Click detection on planets
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
             container.addEventListener('click', (e) => {
                 const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
+                const mouse = new THREE.Vector2(((e.clientX - rect.left) / container.clientWidth) * 2 - 1, -((e.clientY - rect.top) / container.clientHeight) * 2 + 1);
+                const raycaster = new THREE.Raycaster();
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects([sun, ...planets]);
-
-                if (intersects.length > 0) {
-                    const clickedObj = intersects[0].object;
-                    if (clickedObj.userData && clickedObj.userData.name) {
-                        focusPlanet(clickedObj.userData.name);
-                    }
-                }
+                if (intersects.length > 0) focusPlanet(intersects[0].object.userData.name);
             });
 
             window.addEventListener('resize', onWindowResize);
@@ -274,54 +217,31 @@
             const cometGeo = new THREE.SphereGeometry(0.5, 16, 16);
             const cometMat = new THREE.MeshBasicMaterial({ color: 0xa5f3fc });
             const comet = new THREE.Mesh(cometGeo, cometMat);
-
             const startAngle = Math.random() * Math.PI * 2;
-            const startDist = 110;
-            comet.position.set(Math.cos(startAngle) * startDist, (Math.random() - 0.5) * 20, Math.sin(startAngle) * startDist);
-
-            comet.userData = {
-                vx: -Math.sin(startAngle) * 0.8,
-                vz: Math.cos(startAngle) * 0.8,
-                vy: (Math.random() - 0.5) * 0.1
-            };
-
+            comet.position.set(Math.cos(startAngle) * 110, (Math.random() - 0.5) * 20, Math.sin(startAngle) * 110);
+            comet.userData = { vx: -Math.sin(startAngle) * 0.8, vz: Math.cos(startAngle) * 0.8, vy: (Math.random() - 0.5) * 0.1 };
             scene.add(comet);
             comets.push(comet);
         }
 
         function createStarfield() {
             const starGeo = new THREE.BufferGeometry();
-            const starCount = 2500;
-            const starPositions = new Float32Array(starCount * 3);
-
-            for (let i = 0; i < starCount * 3; i += 3) {
-                starPositions[i] = (Math.random() - 0.5) * 800;
-                starPositions[i + 1] = (Math.random() - 0.5) * 800;
-                starPositions[i + 2] = (Math.random() - 0.5) * 800;
-            }
-
+            const starPositions = new Float32Array(2500 * 3);
+            for (let i = 0; i < 7500; i++) starPositions[i] = (Math.random() - 0.5) * 800;
             starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.8 });
-            const stars = new THREE.Points(starGeo, starMat);
-            scene.add(stars);
+            scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.8 })));
         }
 
         function updateCameraPosition() {
-            if (focusedObject && focusedObject !== 'Overview') {
-                let targetObj = focusedObject === 'Sun' ? sun : planets.find(p => p.userData.name === focusedObject);
-                if (targetObj) {
-                    camera.position.x = targetObj.position.x + Math.sin(cameraAngleY) * 25;
-                    camera.position.y = targetObj.position.y + 12;
-                    camera.position.z = targetObj.position.z + Math.cos(cameraAngleY) * 25;
-                    camera.lookAt(targetObj.position);
+            if (focusedObject !== 'Overview') {
+                let target = focusedObject === 'Sun' ? sun : planets.find(p => p.userData.name === focusedObject);
+                if (target) {
+                    camera.position.set(target.position.x + Math.sin(cameraAngleY) * 25, target.position.y + 12, target.position.z + Math.cos(cameraAngleY) * 25);
+                    camera.lookAt(target.position);
                     return;
                 }
             }
-
-            // Overview mode
-            camera.position.x = Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
-            camera.position.y = Math.sin(cameraAngleX) * cameraDistance;
-            camera.position.z = Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
+            camera.position.set(Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance, Math.sin(cameraAngleX) * cameraDistance, Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance);
             camera.lookAt(0, 0, 0);
         }
 
@@ -329,8 +249,7 @@
             focusedObject = name;
             let targetData = name === 'Sun' ? sun.userData : planets.find(p => p.userData.name === name)?.userData;
             if (!targetData) return;
-
-            document.getElementById('info-name').innerText = targetData.vnName || targetData.name;
+            document.getElementById('info-name').innerText = targetData.vnName;
             document.getElementById('info-desc').innerText = targetData.desc;
             document.getElementById('stat-dist').innerText = targetData.distAU;
             document.getElementById('stat-speed').innerText = targetData.speedVal;
@@ -340,19 +259,9 @@
             document.getElementById('sunmass').value = 1.0;
             document.getElementById('timescale').value = 1.0;
             focusedObject = 'Overview';
-            cameraDistance = 120;
-            cameraAngleX = 0.5;
-            cameraAngleY = 0;
-            focusPlanet('Overview');
-            
-            // Remove all custom comets
             comets.forEach(c => scene.remove(c));
             comets = [];
-
-            document.getElementById('info-name').innerText = "Hệ Mặt Trời (Tổng quan)";
-            document.getElementById('info-desc').innerText = "Click vào bất kỳ hành tinh nào trong không gian hoặc chọn nhanh bên dưới để xem dữ liệu quỹ đạo.";
-            document.getElementById('stat-dist').innerText = "1 AU";
-            document.getElementById('stat-speed').innerText = "30 km/s";
+            focusPlanet('Overview');
         }
 
         function onWindowResize() {
@@ -364,48 +273,31 @@
 
         function animate() {
             requestAnimationFrame(animate);
-
             const sunMass = parseFloat(document.getElementById('sunmass').value);
             const timeScale = parseFloat(document.getElementById('timescale').value);
-
             document.getElementById('val-sunmass').innerText = sunMass.toFixed(1) + " x";
             document.getElementById('val-timescale').innerText = timeScale.toFixed(1) + "x";
 
-            // Rotate Sun
             sun.rotation.y += 0.002 * timeScale;
-
-            // Update Planets Orbit with gravitational multiplier
-            planets.forEach(planet => {
-                const data = planet.userData;
-                const effectiveSpeed = data.speed * Math.sqrt(sunMass) * timeScale;
-                data.angle += effectiveSpeed;
-
-                planet.position.x = Math.cos(data.angle) * data.distance;
-                planet.position.z = Math.sin(data.angle) * data.distance;
-                planet.rotation.y += 0.01 * timeScale;
+            planets.forEach(p => {
+                p.userData.angle += p.userData.speed * Math.sqrt(sunMass) * timeScale;
+                p.position.set(Math.cos(p.userData.angle) * p.userData.distance, 0, Math.sin(p.userData.angle) * p.userData.distance);
+                p.rotation.y += 0.01 * timeScale;
             });
 
-            // Update Comets / Free-flying Asteroids with 1/r^2 gravity pull towards Sun
-            comets.forEach(comet => {
-                const x = comet.position.x;
-                const z = comet.position.z;
-                const distSq = x * x + z * z + 1;
-                const dist = Math.sqrt(distSq);
-
-                // Gravitational acceleration towards center (0,0,0)
+            comets.forEach(c => {
+                const distSq = c.position.x ** 2 + c.position.z ** 2 + 1;
                 const force = (0.5 * sunMass) / distSq;
-                comet.userData.vx -= (x / dist) * force * timeScale;
-                comet.userData.vz -= (z / dist) * force * timeScale;
-
-                comet.position.x += comet.userData.vx * timeScale;
-                comet.position.z += comet.userData.vz * timeScale;
-                comet.position.y += comet.userData.vy * timeScale;
+                c.userData.vx -= (c.position.x / Math.sqrt(distSq)) * force * timeScale;
+                c.userData.vz -= (c.position.z / Math.sqrt(distSq)) * force * timeScale;
+                c.position.x += c.userData.vx * timeScale;
+                c.position.z += c.userData.vz * timeScale;
+                c.position.y += c.userData.vy * timeScale;
             });
 
             updateCameraPosition();
             renderer.render(scene, camera);
         }
-
         window.onload = init;
     </script>
 </body>
