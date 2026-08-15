@@ -122,8 +122,6 @@
         let scene, camera, renderer;
         let sun, planets = [], comets = [];
         let focusedObject = 'Overview';
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
         let cameraAngleX = 0.5, cameraAngleY = 0, cameraDistance = 120;
 
         const planetData = [
@@ -165,41 +163,36 @@
             sun.userData = { name: 'Sun', vnName: 'Mặt Trời', desc: 'Ngôi sao trung tâm cung cấp năng lượng và hấp dẫn toàn hệ thống.', distAU: '0 AU', speedVal: '0 km/s' };
             scene.add(sun);
 
-            // Thay toàn bộ khối planetData.forEach(...) cũ bằng khối này:
-const textureLoader = new THREE.TextureLoader();
+            planetData.forEach(data => {
+                const orbitGeo = new THREE.RingGeometry(data.distance - 0.05, data.distance + 0.05, 64);
+                const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+                const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
+                orbitLine.rotation.x = Math.PI / 2;
+                scene.add(orbitLine);
 
-planetData.forEach(data => {
-    // 1. Tạo quỹ đạo
-    const orbitGeo = new THREE.RingGeometry(data.distance - 0.05, data.distance + 0.05, 64);
-    const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
-    const orbitLine = new THREE.Mesh(orbitGeo, orbitMat);
-    orbitLine.rotation.x = Math.PI / 2;
-    scene.add(orbitLine);
+                const planetMat = new THREE.MeshStandardMaterial({
+                    color: data.color,
+                    roughness: 0.7,
+                    metalness: 0.1
+                });
+                
+                const planet = new THREE.Mesh(new THREE.SphereGeometry(data.radius, 32, 32), planetMat);
+                planet.castShadow = true;
+                
+                planet.userData = { 
+                    name: data.name, vnName: data.vnName, distance: data.distance, speed: data.speed, 
+                    angle: Math.random() * Math.PI * 2, desc: data.desc, distAU: data.distAU, speedVal: data.speedVal
+                };
 
-    // 2. Tạo Hành tinh với vật liệu thực tế
-    // Tạm thời dùng màu nếu không có ảnh, hoặc dùng TextureLoader nếu cậu có link ảnh
-    const planetMat = new THREE.MeshStandardMaterial({
-        color: data.color,
-        roughness: 0.7,
-        metalness: 0.1
-    });
-    
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(data.radius, 32, 32), planetMat);
-    planet.castShadow = true; // Cho phép đổ bóng
-    
-    planet.userData = { 
-        name: data.name, vnName: data.vnName, distance: data.distance, speed: data.speed, 
-        angle: Math.random() * Math.PI * 2, desc: data.desc, distAU: data.distAU, speedVal: data.speedVal
-    };
+                const atmosMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.BackSide });
+                const atmos = new THREE.Mesh(new THREE.SphereGeometry(data.radius * 1.2, 32, 32), atmosMat);
+                planet.add(atmos);
 
-    // 3. Hiệu ứng khí quyển cho hành tinh (trông giống Trái Đất hơn)
-    const atmosMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.BackSide });
-    const atmos = new THREE.Mesh(new THREE.SphereGeometry(data.radius * 1.2, 32, 32), atmosMat);
-    planet.add(atmos);
+                scene.add(planet);
+                planets.push(planet);
+            });
 
-    scene.add(planet);
-    planets.push(planet);
-});
+            window.addEventListener('resize', onWindowResize);
         }
 
         function spawnComet() {
@@ -266,9 +259,9 @@ planetData.forEach(data => {
             const timeScale = parseFloat(document.getElementById('timescale').value);
             document.getElementById('val-sunmass').innerText = sunMass.toFixed(1) + " x";
             document.getElementById('val-timescale').innerText = timeScale.toFixed(1) + "x";
-            planet.rotation.y += 0.005
 
             sun.rotation.y += 0.002 * timeScale;
+            
             planets.forEach(p => {
                 p.userData.angle += p.userData.speed * Math.sqrt(sunMass) * timeScale;
                 p.position.set(Math.cos(p.userData.angle) * p.userData.distance, 0, Math.sin(p.userData.angle) * p.userData.distance);
